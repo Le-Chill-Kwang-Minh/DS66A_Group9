@@ -1,0 +1,148 @@
+% =====================================================================
+% CHAPTER 5: MACHINE LEARNING MODELS AND EXPERIMENTAL DESIGN
+% =====================================================================
+
+\section{MACHINE LEARNING MODELS AND EXPERIMENTAL DESIGN}
+\addcontentsline{toc}{section}{CHAPTER 5. MACHINE LEARNING MODELS AND EXPERIMENTAL DESIGN}
+Chapter 4 brought the data into a clean state, outlined findings from EDA, and established data-leakage-free preprocessing principles. This chapter moves on to machine learning: formulating the churn prediction task, describing model inputs, comparing algorithms, outlining the experimental workflow, and defining evaluation metrics. All setups below strictly follow the group's notebook code so that the results in Chapter 6 can be reproduced (\texttt{random\_state = 42}).
+
+\subsection{Problem Statement}
+
+Churn prediction is formulated as a supervised binary classification task. Given a feature vector $x$ for a customer, the model estimates the probability $P(\text{Churn} = 1 \mid x)$; the predicted label is "departed" if this probability is greater than or equal to a threshold $t$, and "stayed" otherwise. The positive class represents departed customers ($\text{Churn} = 1$), accounting to 26.6\% of the data (1,869/7,032), with a class ratio of approximately 2.76 : 1 (Section 4.1.1).
+
+Two characteristics of the problem guide the entire experimental design:
+
+\begin{itemize}
+    \item \textbf{Asymmetric Error Costs.} As stated in Section 1.1, acquiring a new subscriber costs about five to seven times more than retaining an existing one. Missing a customer about to churn (false negative) is therefore typically costlier than sending a retention offer to a customer who would have stayed anyway (false positive). This makes the Recall of the churn class crucial; however, if Recall is maximized alone, the model would label nearly every customer as "departed". The group therefore chooses the F1-score of the churn class as the model selection metric, accompanied by Precision, Recall, ROC-AUC, and PR-AUC.
+    \item \textbf{Moderate Class Imbalance.} A model that always predicts "stayed" achieves an accuracy of about 73.4\% but fails to detect any departing customers, so accuracy is not used as the primary metric.
+\end{itemize}
+
+\subsection{ Model Input Data}
+
+In addition to the steps in Section 4.2.1, before one-hot encoding, the group groups the values "No internet service" (across six supplementary internet service columns: OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies) and "No phone service" (of MultipleLines) into "No". The reason is that information regarding "customers without internet" or "without phone" is fully represented by InternetService and PhoneService; keeping a separate level in each individual column merely creates binary columns with structural redundancies (two dependency relationships noted in Section 3.1.2) without adding new information.
+
+The target variable is then mapped "Yes" $\rightarrow$ 1, "No" $\rightarrow$ 0, and the remaining categorical variables are one-hot encoded using \texttt{pd.get\_dummies(drop\_first=True)}. The resulting dataset contains 7,032 rows $\times$ 24 columns, comprising \textbf{23 features} and the Churn target variable.
+
+\vspace{0.5em}
+\noindent\textbf{Table 5.1} Structure of the 23 input features.
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.3cm} X r}
+\toprule
+\textbf{Group} & \textbf{Features} & \textbf{Column Count} \\
+\midrule
+Continuous (normalized) & tenure, MonthlyCharges, TotalCharges & 3 \\
+\addlinespace
+Demographics & SeniorCitizen, gender\_Male, Partner\_Yes, Dependents\_Yes & 4 \\
+\addlinespace
+Phone / Internet Services & PhoneService\_Yes, MultipleLines\_Yes, InternetService\_Fiber optic, InternetService\_No & 4 \\
+\addlinespace
+Supplementary Services & OnlineSecurity\_Yes, OnlineBackup\_Yes, DeviceProtection\_Yes, TechSupport\_Yes, StreamingTV\_Yes, StreamingMovies\_Yes & 6 \\
+\addlinespace
+Contract and Payment & Contract\_One year, Contract\_Two year, PaperlessBilling\_Yes, PaymentMethod\_Credit card (automatic), PaymentMethod\_Electronic check, PaymentMethod\_Mailed check & 6 \\
+\midrule
+\textbf{Total} & & \textbf{23} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The dropped reference level for each variable is the first level in alphabetical order: InternetService = DSL, Contract = Month-to-month, PaymentMethod = Bank transfer (automatic). This transformation is determined per record without estimating parameters from data, so performing it prior to data splitting causes no data leakage (see Section 4.2.1).
+
+Data is split 80/20 with label stratification (\texttt{stratify = y}, \texttt{random\_state = 42}), yielding \textbf{5,625 training records} and \textbf{1,407 test records}, where the test set contains 374 departing customers and 1,033 staying customers (the churn rate remains approximately 26.6\%).
+
+\subsection{Compared Models}
+
+The group compares six classification algorithms representing different model families, along with a baseline model (Dummy) as a reference point.
+
+\vspace{0.5em}
+\noindent\textbf{Table 5.2} Models and default configurations before tuning.
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{l l X}
+\toprule
+\textbf{Model} & \textbf{Algorithm Family} & \textbf{Default Configuration} \\
+\midrule
+Dummy Baseline & Baseline model & \texttt{strategy = "stratified"} \\
+Logistic Regression (LR) & Linear & \texttt{max\_iter = 2000} \\
+Decision Tree (DT) & Single decision tree & Scikit-learn default \\
+Random Forest (RF) & Bagging ensemble & \texttt{n\_estimators = 120} \\
+KNN & Distance-based & \texttt{n\_neighbors = 11} \\
+AdaBoost & Boosting ensemble & \texttt{n\_estimators = 100} \\
+Gradient Boosting (GB) & Boosting ensemble & \texttt{n\_estimators = 100} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\textbf{Dummy Baseline} generates random predictions matching the training set class distribution without using any features. This model indicates the score level "by chance" (e.g., PR-AUC approximately equals the positive class proportion of 0.266); all actual models must outperform this benchmark.
+
+\textbf{Logistic Regression} models the log-odds of churn as a linear function of features: $P(\text{Churn} = 1 \mid x) = 1 / (1 + \exp(-(w \cdot x + b)))$. Its advantages are simplicity, speed, and interpretability via coefficients; its limitation is that it only captures linear decision boundaries and is sensitive to multicollinearity among tenure, MonthlyCharges, and TotalCharges (Section 4.1.4).
+
+\textbf{Decision Tree} partitions the feature space using sequential threshold conditions. The tree is highly interpretable, but without depth restrictions, it overfits the training data and exhibits high variance.
+
+\textbf{Random Forest} trains multiple trees on bootstrap samples with random feature subsets and averages their probabilities. Averaging reduces the variance of individual trees and captures non-linear interactions, such as those among contract type, tenure, and internet type.
+
+\textbf{KNN} predicts based on the labels of the $k$ nearest neighbors. Because it relies directly on distances, KNN (along with LR) requires normalized numerical features.
+
+\textbf{AdaBoost and Gradient Boosting} sequentially build multiple weak learners (shallow trees), with each new learner focusing on correcting the errors of previous ones by increasing weights of misclassified samples (AdaBoost) or fitting the gradients of the loss function (Gradient Boosting). These two models are typically strong on tabular data but lack a \texttt{class\_weight} parameter, which affects results in Section 6.2.
+
+\subsection{ Preprocessing Pipeline and Data Leakage Control}
+
+Three continuous variables (tenure, MonthlyCharges, TotalCharges) are Z-score normalized using StandardScaler; remaining binary columns are passed through (\texttt{remainder = "passthrough"}). The normalization is wrapped in a ColumnTransformer and combined with each model into a single Pipeline (\texttt{prep} $\rightarrow$ \texttt{model}).
+
+This design has an important consequence: when using the Pipeline in cross-validation and GridSearchCV, the normalizer is refit exclusively on the training split of each iteration, and the validation split of that iteration does not contribute to its mean or standard deviation. Consequently, the indirect leakage issue mentioned in Section 4.2.4 (where the scaler is fit before cross-validation) \textbf{no longer exists} in the final setup. Normalization affects only LR and KNN; tree-based models are scale-invariant.
+
+\subsection{ Experimental Workflow}
+
+The workflow consists of four fixed-order steps; the test set appears only in the final step.
+
+\begin{enumerate}
+    \item \textbf{Model comparison with default hyperparameters.} Using 5-fold stratified cross-validation (StratifiedKFold, \texttt{shuffle = True}, \texttt{random\_state = 42}) on the training set, reporting mean Accuracy, Precision, Recall, F1, ROC-AUC, PR-AUC, and the standard deviation of F1 across folds.
+    \item \textbf{Hyperparameter tuning.} For each model, GridSearchCV (with the same 5-fold splitter, \texttt{scoring = F1}, \texttt{refit = True}) searches for the best configuration on the training set. The model with the highest cross-validation F1 is selected as the final model.
+    \item \textbf{Classification threshold selection.} For the chosen model, out-of-fold probabilities are collected on the training set via \texttt{cross\_val\_predict}, scanning threshold $t$ from 0.20 to 0.79 (step 0.01) to select $t$ maximizing F1. The threshold is determined entirely on the training data.
+    \item \textbf{Final evaluation.} The final model is evaluated once on the 1,407-record test set using the threshold selected in step 3 (while also reporting the default 0.50 threshold for comparison).
+\end{enumerate}
+
+\vspace{0.5em}
+\noindent\textbf{Table 5.3} GridSearchCV hyperparameter grid.
+
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{l X r}
+\toprule
+\textbf{Model} & \textbf{Hyperparameters and Tested Values} & \textbf{Combinations} \\
+\midrule
+Logistic Regression & \texttt{C} $\in \{0.1, 0.5, 1, 2, 5\}$; \texttt{class\_weight} $\in \{\text{None}, \text{balanced}\}$ & 10 \\
+\addlinespace
+Decision Tree & \texttt{max\_depth} $\in \{3, 5, 8, \text{None}\}$; \texttt{min\_samples\_leaf} $\in \{5, 10, 20\}$; \texttt{class\_weight} $\in \{\text{None}, \text{balanced}\}$ & 24 \\
+\addlinespace
+Random Forest & \texttt{n\_estimators} $\in \{100, 200\}$; \texttt{max\_depth} $\in \{\text{None}, 10, 20\}$; \texttt{min\_samples\_leaf} $\in \{2, 5\}$; \texttt{class\_weight} $\in \{\text{None}, \text{balanced}\}$ & 24 \\
+\addlinespace
+KNN & \texttt{n\_neighbors} $\in \{5, 11, 21, 31\}$; \texttt{weights} $\in \{\text{uniform}, \text{distance}\}$; \texttt{p} $\in \{1, 2\}$ & 16 \\
+\addlinespace
+AdaBoost & \texttt{n\_estimators} $\in \{50, 100, 150\}$; \texttt{learning\_rate} $\in \{0.1, 0.5, 1.0\}$ & 9 \\
+\addlinespace
+Gradient Boosting & \texttt{n\_estimators} $\in \{80, 140, 200\}$; \texttt{learning\_rate} $\in \{0.03, 0.08, 0.15\}$; \texttt{max\_depth} $\in \{1, 2, 3\}$ & 27 \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+The parameter \texttt{class\_weight = "balanced"} assigns higher weight to the minority class (churn) in the loss function. This handles class imbalance at the algorithmic level without requiring synthetic sample generation, thus leaving data unchanged and avoiding resampling-related leakage risks.
+
+\subsection{ Evaluation Metrics}
+
+Let TP, FP, FN, and TN represent true positives, false positives, false negatives, and true negatives respectively (positive class is churn).
+
+\begin{itemize}
+    \item \textbf{Precision} = $\text{TP} / (\text{TP} + \text{FP})$: proportion of customers flagged as departing who actually departed.
+    \item \textbf{Recall} = $\text{TP} / (\text{TP} + \text{FN})$: proportion of actual departing customers successfully detected by the model.
+    \item \textbf{F1} = $2 \cdot \text{Precision} \cdot \text{Recall} / (\text{Precision} + \text{Recall})$: harmonic mean of precision and recall, used as the model selection metric.
+    \item \textbf{ROC-AUC}: probability that the model ranks a departing customer higher than a staying customer, threshold-independent; random baseline is 0.5.
+    \item \textbf{PR-AUC} (average precision): area under the Precision–Recall curve, more sensitive to minority classes than ROC-AUC; random baseline equals the positive class ratio (approx. 0.266).
+    \item \textbf{Accuracy} is reported for reference only as it does not reflect the ability to detect departing customers.
+\end{itemize}
+
+\subsection{ Chapter Summary}
+
+Chapter 5 formulated the churn prediction problem as binary classification with asymmetric error costs, described 23 input features and the 5,625/1.407 split, introduced six algorithms along with a baseline model, and outlined the four-step workflow (default comparison, tuning, threshold selection, single test evaluation) within a Pipeline to prevent data leakage. Results are presented in Chapter 6.

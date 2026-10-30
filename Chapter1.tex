@@ -1,0 +1,48 @@
+%======================================================================
+% CHAPTER 1
+%======================================================================
+\section{ Business Problem Overview and Dataset Provenance}
+
+\subsection{Executive Overview and Business Context}
+In the contemporary telecommunications landscape, market saturation and low switching barriers have fundamentally shifted strategic business priorities from aggressive customer acquisition to proactive customer retention. Customer churn---defined as the phenomenon where a subscriber terminates their relationship or service agreement with a provider---represents one of the most critical threats to recurring revenue stability and long-term corporate valuation. Empirical industry studies consistently demonstrate that acquiring a new telecommunications subscriber is five to seven times more capital-intensive than retaining an existing one, due to substantial marketing overheads, promotional hardware subsidies, and physical infrastructure provisioning costs.
+
+In this report, we present an exhaustive technical and strategic examination of the IBM Telco Customer Churn data. Our primary objectives in this study are structured logically across three chapters:
+\begin{enumerate}
+    \item \textbf{Chapter 1 (Business Problem \& Provenance):} Establish the strategic context of telecommunications churn, introduce the origin and scale of the dataset, and inspect the initial storage schema.
+    \item \textbf{Chapter 2 (Feature Taxonomy \& Baseline Statistics):} Classify all $21$ attributes into five functional dimensions, document structural dependencies across service variables, and analyze the baseline descriptive statistics of the quantitative features.
+    \item \textbf{Chapter 3 (Data Cleaning \& Sanitization Methodology):} Detail the exact programmatic procedures executed to remove non-predictive identifiers, coerce disguised string variables into numeric types, and handle hidden missing values without inducing data leakage.
+\end{enumerate}
+
+\subsection{Domain Context and Dataset Provenance}
+The data we examined in our study is the public benchmark \textit{IBM Telco Customer Churn} dataset, retrieved directly from the official IBM Cloud Pak for Data repository (\texttt{Telco-Customer-Churn.csv}). It models a fictional yet highly realistic telecommunications provider offering residential landline telephone and broadband internet services to households. Each observational record in the data represents a unique individual customer account, capturing a cross-sectional snapshot at a specific point in time of the subscriber's demographic profile, subscribed service portfolio, contractual obligations, billing preferences, financial expenditure, and current retention status.
+
+\subsection{Raw Dataset Scale and Initial Storage Schema}
+Prior to any data manipulation or cleaning, our raw dataset comprises exactly $7,043$ rows (individual customer records) and $21$ columns (distinct attributes), occupying approximately $1.1+$ MB of memory in a standard \texttt{pandas} DataFrame structure. 
+
+When ingested into Python via \texttt{pd.read\_csv()}, \texttt{pandas} classifies the $21$ columns into three underlying storage data types (\texttt{dtypes}), as summarized in Table~\ref{tab:raw_schema}:
+\begin{itemize}
+    \item \textbf{Floating-Point Numeric (\texttt{float64} --- 1 column):} \texttt{MonthlyCharges}, which stores decimal currency figures.
+    \item \textbf{Integer Numeric (\texttt{int64} --- 2 columns):} \texttt{SeniorCitizen} (encoded as $0$ or $1$) and \texttt{tenure} (encoded as whole months from $0$ to $72$).
+    \item \textbf{String / Categorical Object (\texttt{object} --- 18 columns):} Includes the account identifier (\texttt{customerID}), $15$ categorical demographic, service, and billing attributes, the target variable (\texttt{Churn}), and one anomalous financial column (\texttt{TotalCharges}).
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l c X}
+\toprule
+\textbf{Pandas Data Type} & \textbf{Column Count} & \textbf{Assigned Attributes in Raw Dataset} \\
+\midrule
+\texttt{float64} (Decimal) & $1$ & \texttt{MonthlyCharges} \\
+\addlinespace
+\texttt{int64} (Integer) & $2$ & \texttt{SeniorCitizen}, \texttt{tenure} \\
+\addlinespace
+\texttt{object} (Text/String) & $18$ & \texttt{customerID}, \texttt{gender}, \texttt{Partner}, \texttt{Dependents}, \texttt{PhoneService}, \texttt{MultipleLines}, \texttt{InternetService}, \texttt{OnlineSecurity}, \texttt{OnlineBackup}, \texttt{DeviceProtection}, \texttt{TechSupport}, \texttt{StreamingTV}, \texttt{StreamingMovies}, \texttt{Contract}, \texttt{PaperlessBilling}, \texttt{PaymentMethod}, \texttt{TotalCharges}*, \texttt{Churn} \\
+\bottomrule
+\end{tabularx}
+\caption{Initial storage schema of the raw dataset ($N = 7,043\text{ rows} \times 21\text{ columns}$). *Note: \texttt{TotalCharges} is a continuous numerical variable misclassified as \texttt{object} due to formatting artifacts.}
+\label{tab:raw_schema}
+\end{table}
+
+\subsection{Summary of Chapter 1}
+Chapter 1 has established the commercial imperative of customer retention in the telecommunications sector and introduced the IBM Telco Customer Churn dataset ($7,043$ records across $21$ attributes). Initial schema inspection revealed a data type anomaly where numeric fields were misclassified as text strings due to formatting artifacts. 

@@ -1,0 +1,198 @@
+% =====================================================================
+% CHAPTER 4: EXPLORATORY DATA ANALYSIS (EDA) AND DATA PREPROCESSING
+% ---------------------------------------------------------------------Feature Engineering & Model Preparation
+% NOTES
+% 1. Heading levels follow the template: \section = chapter,
+%    \subsection = 4.1, \subsubsection = 4.1.1. The chapter number
+%    follows the \input order in main.tex.
+% 2. Figure paths: files sit next to main.tex (e.g. fig_heatmap.pdf).
+%    If they are in a folder, add the prefix (e.g. Images/fig_heatmap.pdf).
+% 3. Three places are marked \textbf{[verify ...]}: check them against
+%    the notebook output, then delete the marker.
+% 4. References to "Chapter 3" point to the data overview and cleaning
+%    chapter. Adjust if your numbering differs.
+% 5. Needs \usepackage{booktabs} and \usepackage{multirow} in main.tex.
+% 6. The labels "Hình"/"Bảng" come from the template. To get
+%    "Figure"/"Table", set \renewcommand{\figurename}{Figure} and
+%    \renewcommand{\tablename}{Table} in main.tex.
+% =====================================================================
+
+\section{Feature Engineering and Model Preparation}
+\label{chap:eda_prep}
+
+This chapter has two parts. The first is an exploratory data analysis (EDA) of the \textit{IBM Telco Customer Churn} dataset, cleaned in Chapter 3 (7,032 records and 20 attributes), aimed at identifying the factors associated with customers leaving the service. The second is the data preprocessing that prepares the data for modeling, with particular attention to the order of the steps so that data leakage is avoided, since this is a precondition for trustworthy results in the experimental chapter.
+
+%---------------------------------------------------------------------
+\subsection{Exploratory Data Analysis (EDA)}
+\label{sec:eda}
+%---------------------------------------------------------------------
+
+This section analyzes the cleaned data (7,032 records) using \texttt{matplotlib} and \texttt{seaborn}. The observations below describe \textit{associations} between the features and customer churn; they suggest possible causes but do not establish causality.
+
+\subsubsection{Distribution of the target variable}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{fig_churn_pie.pdf}
+\caption{Proportion of customers who churned and customers who stayed.}
+\label{fig:churn_pie}
+\end{figure}
+
+Figure~\ref{fig:churn_pie} shows 5,163 customers who stayed (73.4\%) and 1,869 customers who left (26.6\%), a ratio of about 2.76 : 1. This is a moderate class imbalance, but large enough that a model always predicting ``No'' would reach an accuracy of about 73.4\% without identifying a single customer about to leave. For this reason, accuracy is not used as the main metric in the experimental chapter; we rely on the F1-score of the churn class together with Recall, Precision and ROC-AUC.
+
+\subsubsection{Continuous variables: \texttt{tenure}, \texttt{MonthlyCharges}, \texttt{TotalCharges}}
+\label{sec:eda_cont}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_boxplots.pdf}
+\caption{Boxplots of \texttt{tenure}, \texttt{MonthlyCharges} and \texttt{TotalCharges} by churn status.}
+\label{fig:boxplots}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_hist.pdf}
+\caption{Distribution (histogram and KDE) of \texttt{tenure} and \texttt{MonthlyCharges} by churn status.}
+\label{fig:hist}
+\end{figure}
+
+\textbf{Customer tenure (\texttt{tenure}).} According to Figures~\ref{fig:boxplots} and~\ref{fig:hist}, customers who stayed have a median tenure of about 38 months, whereas customers who left have a median of only about 10 months. Churners are concentrated in the first months of service, and customers who pass the 12--24 month mark leave noticeably less often. This suggests that the early period carries the highest risk and is the best opportunity for retention efforts.
+
+\textbf{Monthly charges (\texttt{MonthlyCharges}).} Churners have a median monthly charge of about \$79.65, higher than customers who stayed (about \$64.50). Among retained customers, the histogram shows a tall peak around \$18--25, corresponding to customers on basic phone-only plans who rarely leave; among churners, the density is concentrated around \$70--105. This indicates a higher risk of leaving in the high-charge group, possibly related to fiber-optic Internet and bundled service packages, but this dataset alone does not allow a causal conclusion.
+
+\textbf{Total charges (\texttt{TotalCharges}).} Churners have lower \texttt{TotalCharges} (median about \$700 versus about \$1,680), even though their monthly charges are higher. This is not contradictory: because \texttt{TotalCharges} is approximately \texttt{tenure} $\times$ \texttt{MonthlyCharges}, customers who leave early have not had time to accumulate large total charges. Tenure therefore acts as a confounder when \texttt{TotalCharges} is compared directly between the two groups.
+
+\subsubsection{Categorical variables: \texttt{Contract} and \texttt{PaymentMethod}}
+\label{sec:eda_cat}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{fig_countplots.pdf}
+\caption{Number of customers by contract type and payment method, split by churn status.}
+\label{fig:countplots}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Variable} & \textbf{Value} & \textbf{Total} & \textbf{Stayed} & \textbf{Churned} & \textbf{Churn rate} \\
+\midrule
+\multirow{3}{*}{\texttt{Contract}}
+ & Month-to-month & 3,875 & 2,220 & 1,655 & 42.7\% \\
+ & One year       & 1,472 & 1,306 & 166   & 11.3\% \\
+ & Two year       & 1,685 & 1,637 & 48    & 2.8\%  \\
+\midrule
+\multirow{4}{*}{\texttt{PaymentMethod}}
+ & Electronic check          & 2,365 & 1,294 & 1,071 & 45.3\% \\
+ & Mailed check              & 1,604 & 1,296 & 308   & 19.2\% \\
+ & Bank transfer (automatic) & 1,542 & 1,284 & 258   & 16.7\% \\
+ & Credit card (automatic)   & 1,521 & 1,289 & 232   & 15.3\% \\
+\bottomrule
+\end{tabular}
+\caption{Churn rate by contract type and payment method.}
+\label{tab:churn_by_cat}
+\end{table}
+
+% NOTE: if Overleaf reports a missing \multirow, add \usepackage{multirow} to main.tex.
+% Verify the counts with: pd.crosstab(df_cleaned['Contract'], df_cleaned['Churn'])
+
+\textbf{Contract type.} Figure~\ref{fig:countplots} and Table~\ref{tab:churn_by_cat} show a very large gap: customers on month-to-month contracts churn at 42.7\%, one-year contracts at 11.3\%, and two-year contracts at only 2.8\%. Short-term contracts carry no exit commitment, so customers can switch providers more easily; this is one of the most discriminative features in the dataset.
+
+\textbf{Payment method.} Customers paying automatically (bank transfer, credit card) have low churn rates of about 15--17\%. Customers paying by electronic check churn at 45.3\% and account for about 57\% of all churners (1,071 out of 1,869). One possible explanation is that manual payment forces customers to review their bill every month, but this is only a hypothesis requiring further verification; this group may also differ in age, plan type or tenure.
+
+\subsubsection{Correlation matrix}
+
+To get an overview of how strongly each feature is related to \texttt{Churn}, we computed the Pearson correlation matrix on the whole cleaned dataset, temporarily encoding categorical variables as category codes, and then selected the 9 features with the largest $|r|$ with \texttt{Churn}. The result is shown in Figure~\ref{fig:heatmap}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_heatmap.pdf}
+\caption{Correlation matrix of the 9 features with the largest absolute correlation with \texttt{Churn}, and \texttt{Churn} itself.}
+\label{fig:heatmap}
+\end{figure}
+
+Main observations:
+\begin{itemize}
+    \item \texttt{Contract} and \texttt{tenure} have the strongest negative correlations with \texttt{Churn} ($-0.40$ and $-0.35$ respectively), consistent with Sections~\ref{sec:eda_cont} and~\ref{sec:eda_cat}: the longer the contract and the longer the tenure, the lower the likelihood of leaving.
+    \item The four add-on services \texttt{OnlineSecurity} ($-0.29$), \texttt{TechSupport} ($-0.28$), \texttt{OnlineBackup} ($-0.20$) and \texttt{DeviceProtection} ($-0.18$) are all negatively correlated with \texttt{Churn}: customers who use these services tend to leave less often. These services are also positively correlated with \texttt{Contract} and \texttt{tenure} (0.18--0.43), so part of the association may come from customers with more services also staying longer.
+    \item \texttt{MonthlyCharges} and \texttt{PaperlessBilling} are both weakly positively correlated with \texttt{Churn} (0.19), in line with the observation that churners pay higher monthly charges.
+    \item \texttt{TotalCharges} is very strongly correlated with \texttt{tenure} (0.83) and fairly strongly with \texttt{MonthlyCharges} (0.65), as expected from the approximate relation $\texttt{TotalCharges} \approx \texttt{tenure} \times \texttt{MonthlyCharges}$. \texttt{Contract} and \texttt{tenure} are also notably correlated (0.68). This multicollinearity should be kept in mind when interpreting linear models such as Logistic Regression.
+    \item No feature has a large $|r|$ with \texttt{Churn}: the maximum is only 0.40 (\texttt{Contract}). Churn therefore cannot be predicted from a single feature, and a model that combines many features is needed.
+\end{itemize}
+
+\textbf{Limitations of this matrix.} The Pearson coefficient only measures linear association, and assigning numeric codes to nominal categorical variables creates an artificial ordering (for example, ``No internet service'' receives a code between ``No'' and ``Yes''), so the coefficients of such variables are indicative only. One illustration is that \texttt{PaymentMethod} does not appear among the top 9 features, even though Section~\ref{sec:eda_cat} shows that \textit{Electronic check} users churn at an unusually high rate; this is most likely because the codes follow alphabetical order, so the relationship is no longer monotonic. The matrix is therefore used for exploration only: we do \textbf{not} use it to select features for the models and keep all features, so this step does not cause data leakage even though it is computed on the whole dataset.
+
+\subsubsection{Summary of findings and implications for modeling}
+
+\begin{table}[htbp]
+\centering
+\begin{center}
+\small
+\begin{tabularx}{\textwidth}{|p{0.25\textwidth}|p{0.35\textwidth}|p{0.30\textwidth}|}
+\hline
+\textbf{Finding} & \textbf{Evidence} & \textbf{Implication for modeling} \\
+\hline
+Moderate class imbalance & 26.6\% churn, ratio 2.76 : 1 & Stratified splitting; evaluate with F1, Recall and ROC-AUC rather than accuracy \\
+\hline
+New customers leave more often & Median tenure: 10 months (churned) vs. 38 months (stayed) & Tenure (\texttt{tenure}) is an important feature \\
+\hline
+Short-term contracts are high risk & Churn 42.7\% vs. 2.8\% (Two-year) & Contract (\texttt{Contract}) must be fully encoded \\
+\hline
+Manual payment is high risk & Electronic check: 45.3\% & Keep \texttt{PaymentMethod} as one-hot columns \\
+\hline
+Multicollinearity among charge variables & \texttt{TotalCharges} $\approx$ \texttt{tenure} $\times$ \texttt{MonthlyCharges} & Take care when interpreting Logistic Regression \\
+\hline
+\end{tabularx}
+\end{center}
+\caption{Summary of EDA findings and their implications for the modeling step.}
+\label{tab:eda_summary}
+\end{table}
+
+%---------------------------------------------------------------------
+\subsection{Data Preprocessing and Prevention of Data Leakage}
+%---------------------------------------------------------------------
+
+\subsubsection{Feature encoding}
+
+The target variable \texttt{Churn} is mapped as ``Yes'' $\to$ 1 and ``No'' $\to$ 0. The remaining categorical variables are one-hot encoded with \texttt{pd.get\_dummies(drop\_first=True)}; dropping one reference level per variable avoids perfect multicollinearity among the binary columns. After this step the dataset has \textbf{7,032 rows $\times$ 31 columns} (30 features and the target) \textbf{[verify against the line \texttt{Dataset shape ready for split} in the notebook]}.
+
+One-hot encoding is a deterministic transformation of each record's own values; it estimates no parameters from the data or the labels, so performing it before the split does not expose any test-set information. All levels of the categorical variables occur in large numbers, so there is no risk of a rare level appearing only in the test set.
+
+\subsubsection{Train/test split}
+
+The data is split 80/20 using \texttt{train\_test\_split} with \texttt{stratify=y} and \texttt{random\_state=42}. Stratification keeps the churn rate at about 26.6\% in both sets: roughly \textbf{5,625} training records and \textbf{1,407} test records \textbf{[verify against the notebook]}. The test set is held out until model selection and hyperparameter tuning are finished.
+
+\subsubsection{Scaling numerical features}
+
+The three continuous variables (\texttt{tenure}, \texttt{MonthlyCharges}, \texttt{TotalCharges}) are standardized with \texttt{StandardScaler} (Z-score). The most important point is the \textbf{order of operations}:
+\begin{enumerate}
+    \item Split the data into training and test sets first.
+    \item \texttt{fit} the scaler (computing the mean and standard deviation) \textbf{on the training set only}.
+    \item Use those same parameters to \texttt{transform} the test set.
+\end{enumerate}
+If the mean and standard deviation were computed on the whole dataset before splitting, information from the test set would ``leak'' into training and make the evaluation more optimistic than reality. Binary columns produced by one-hot encoding do not need scaling.
+
+\subsubsection{Rules for using the test set and remaining limitation}
+
+To keep the evaluation objective, we apply the following rules:
+\begin{itemize}
+    \item The six models are compared using stratified 5-fold cross-validation (\texttt{StratifiedKFold}) on the training set only.
+    \item Hyperparameter tuning (\texttt{GridSearchCV}) is performed on the training set only.
+    \item The test set is used exactly once to report the final result; the classification threshold is never adjusted using the test set.
+\end{itemize}
+
+\textbf{Limitation.} The scaler is fitted on the whole training set before cross-validation, so in each fold the validation portion has indirectly contributed to the mean and standard deviation. This may make the cross-validation scores slightly higher than the true performance, mainly for Logistic Regression and KNN (tree-based models are unaffected because they do not depend on feature scale). The test-set scores are not affected. The standard remedy is to place the scaler and the model in a single \texttt{Pipeline} so that the scaler is refitted inside every fold; we note this as a direction for improvement in the conclusion.
+
+\subsection{Chapter Summary}
+
+This chapter explored the factors associated with churn (tenure, contract type, payment method, monthly charges) and set up a preprocessing procedure free of data leakage. The resulting data is used in the experimental chapter to compare six classification models and to evaluate them on the test set.
+
+
+
+
+
+
+

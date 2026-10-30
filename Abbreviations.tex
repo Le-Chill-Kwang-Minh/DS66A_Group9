@@ -1,0 +1,93 @@
+
+\newgeometry{left=3.5cm,right=2cm,top=3cm,bottom=3cm}  % Custom margins
+\pagenumbering{roman}
+\thispagestyle{empty}
+
+\begin{center}
+    {\bfseries\LARGE LIST OF ABBREVIATIONS AND NOTATIONS}
+\end{center}\vspace{1em}
+
+%--- AUTO-BREAKING TABLE WITH ACCURATE MARGIN ALIGNMENT -----%
+\begingroup
+\setlength\LTleft{0pt}    % Align longtable with left margin
+\setlength\LTright{0pt}   % Align longtable with right margin
+\small                    % Font size adjustment for long tables
+
+\begin{longtable}{@{}p{2cm} p{5.5cm} p{5cm}@{}}  % Fixed column widths
+\toprule
+\textbf{Abbreviation} & \textbf{Full English Term} & \textbf{Description / Meaning} \\
+\midrule
+\endfirsthead
+
+\multicolumn{3}{c}{\itshape (Continued: List of Abbreviations and Notations)}\\
+\toprule
+\textbf{Abbreviation} & \textbf{Full English Term} & \textbf{Description / Meaning} \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{3}{r}{\itshape Continued on next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
+
+%------------------- DATA --------------------%
+Graduation Thesis & Graduation Thesis / Capstone Project & Undergraduate thesis study \\
+AI       & Artificial Intelligence                  & Machine intelligence field \\
+ML       & Machine Learning                         & Algorithms learning from data \\
+DL       & Deep Learning                            & Deep neural networks \\
+SOTA     & State-of-the-Art                         & Current best performance benchmark \\[3pt]
+
+\multicolumn{3}{l}{\textbf{– Architectures \& Models}}\\
+RNN      & Recurrent Neural Network                 & Sequential neural network \\
+GRU      & Gated Recurrent Unit                     & Gated recurrent mechanism \\
+LSTM     & Long Short-Term Memory                   & Gated memory architecture \\
+CNN      & Convolutional Neural Network             & Grid/image-based neural network \\
+GNN      & Graph Neural Network                     & Graph-structured neural network \\
+MaRENet  & Mask-based Recurrent Expansion Transactional Network & Masked recurrent expansion model \\
+MLP      & Multi-Layer Perceptron                   & Feedforward neural network \\[3pt]
+
+\multicolumn{3}{l}{\textbf{– Loss Functions \& Optimization}}\\
+BCE      & Binary Cross-Entropy                     & Binary classification loss \\
+Focal    & Focal Loss                               & Loss reweighting hard examples \\
+UW       & Uncertainty Weighting                    & Loss weighting via uncertainty \\
+GD       & Gradient Descent                         & First-order optimization method \\
+SGD      & Stochastic Gradient Descent              & Iterative mini-batch optimization \\
+Adam     & Adaptive Moment Estimation               & Adaptive learning rate optimizer \\[3pt]
+
+\multicolumn{3}{l}{\textbf{– Evaluation \& Statistics}}\\
+TP       & True Positive                            & Correct positive predictions \\
+FP       & False Positive                            & Incorrect positive predictions \\
+TN       & True Negative                            & Correct negative predictions \\
+FN       & False Negative                           & Incorrect negative predictions \\
+TPR      & True Positive Rate                       & Sensitivity / Recall metric \\
+FPR      & False Positive Rate                      & Fall-out rate metric \\
+F1       & F1-score                                 & Harmonic mean of Precision and Recall \\
+AUC-ROC  & Area Under ROC Curve                     & Receiver operating characteristic area \\
+AUC-PR   & Area Under Precision–Recall Curve        & Precision-recall curve area \\
+MCC      & Matthews Correlation Coefficient         & Binary classification quality metric \\
+K-fold CV & K-fold Cross-Validation                  & Model evaluation resampling method \\[3pt]
+
+\multicolumn{3}{l}{\textbf{– Data \& Systems}}\\
+TE       & Transactional Expansion                  & Contextual transaction enrichment \\
+CNP      & Card-Not-Present                         & Remote payment transactions \\
+CP       & Card-Present                             & Physical terminal transactions \\
+CSV      & Comma-Separated Values                   & Plain text tabular data format \\
+JSON     & JavaScript Object Notation               & Structured data interchange format \\
+GPU      & Graphics Processing Unit                 & Parallel computation processor \\
+API      & Application Programming Interface        & Software interaction interface \\
+KPI      & Key Performance Indicator                & Measurable performance metric \\[3pt]
+
+\multicolumn{3}{l}{\textbf{– Mathematical Notations}}\\
+$\mathbf{x}_t$ & Input feature vector at time step $t$  & Time-indexed feature vector \\
+$h_t$          & Hidden state                             & Recurrent hidden activation \\
+$c_t$          & Cell state                               & LSTM memory cell memory \\
+$\sigma(\cdot)$ & Sigmoid activation function             & Logistic mapping to $(0, 1)$ \\
+$\tanh(\cdot)$  & Hyperbolic tangent function              & Non-linear mapping to $(-1, 1)$ \\
+$\odot$         & Hadamard product                         & Element-wise multiplication operator \\
+%--------------------------------------------------%
+\end{longtable}
+\endgroup
+
+\restoregeometry
+\cleardoublepage

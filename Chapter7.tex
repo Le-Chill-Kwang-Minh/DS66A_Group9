@@ -1,0 +1,27 @@
+\section{CONCLUSION AND FUTURE DIRECTIONS}
+\addcontentsline{toc}{section}{CHAPTER 7. CONCLUSION AND FUTURE DIRECTIONS}
+
+\subsection{Conclusion}
+
+This report has executed the complete data science pipeline for the customer churn prediction problem on the IBM Telco Customer Churn dataset: data cleaning (dropping \texttt{customerID}, handling 11 hidden missing values in \texttt{TotalCharges}), exploratory data analysis, leakage-free data preprocessing, comparison of six classification algorithms, hyperparameter tuning and threshold selection on the training set, and a final evaluation on the test set.
+
+Key conclusions:
+
+\begin{enumerate}
+    \item Churn is strongly associated with short tenure, month-to-month contracts, and electronic check payments (Chapter 4), and the dataset contains sufficient signal for models to achieve an ROC-AUC of approximately 0.84 on the test set.
+    \item Random Forest with \texttt{class\_weight = "balanced"}, $\text{max\_depth} = 10$, $\text{min\_samples\_leaf} = 5$, $\text{n\_estimators} = 100$, and a threshold of 0.46 detects 80.7\% of churned customers (Recall) with a Precision of 51.9\% and an $\text{F1} = 0.632$.
+    \item Most performance improvements stem from handling class imbalance via class weights rather than increased model complexity; simple Logistic Regression achieves performance comparable to Random Forest in cross-validation.
+    \item The Pipeline workflow, threshold selection on the training data, and single-test-set evaluation make the reported figures more reliable, though uncertainties due to sample size still warrant consideration.
+\end{enumerate}
+
+\subsection{ Future Directions}
+
+\begin{itemize}
+    \item \textbf{Model Explainability:} Calculate feature importance (permutation importance, SHAP) to clearly identify which factors contribute most and test the hypotheses stated in Chapter 4.
+    \item \textbf{Rigorous Evaluation:} Use repeated or nested cross-validation, and compute bootstrap confidence intervals for test set metrics.
+    \item \textbf{Cost-Sensitive Thresholding:} Replace F1 with an expected utility function based on $c$, $q$, and $v$ (Section 6.5), combined with probability calibration (Platt scaling, isotonic regression).
+    \item \textbf{Model Expansion:} Experiment with XGBoost, LightGBM, CatBoost; test SMOTE or undersampling placed strictly inside the Pipeline to prevent leakage.
+    \item \textbf{Survival Analysis:} Directly model the time-to-churn according to tenure rather than binary churn prediction.
+    \item \textbf{Customer Lifetime Value (CLV) Integration:} Combine churn probability with expected revenue to prioritize high-value customers.
+    \item \textbf{Real-world and Time-series Data:} Validate models on real telecommunications provider data with chronological evaluation.
+\end{itemize}

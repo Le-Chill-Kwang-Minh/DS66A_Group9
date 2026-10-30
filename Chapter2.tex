@@ -1,0 +1,109 @@
+%======================================================================
+% CHAPTER 2
+%======================================================================
+\section{Feature Taxonomy and Baseline Descriptive Statistics}
+
+\subsection{Functional Grouping of the 21 Attributes}
+To properly contextualize the analytical value of the data and facilitate structured analysis, we logically divided the $21$ attributes into five distinct functional dimensions: Account Identification, Demographic Profile, Subscribed Service Ecosystem, Contractual \& Financial Mechanics, and the Target Variable. A consolidated overview of these five functional groups is presented in Table~\ref{tab:feature_groups}.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{p{0.22\textwidth} X X}
+\toprule
+\textbf{Functional Group} & \textbf{Attributes} & \textbf{Key Structural Notes} \\
+\midrule
+Account Identification & \texttt{customerID} & Unique primary key assigned to each customer account. \\
+\addlinespace
+Demographic Profile & \texttt{gender}, \texttt{SeniorCitizen}, \texttt{Partner}, \texttt{Dependents} & \texttt{SeniorCitizen} is natively encoded as binary integer $0/1$; others are \texttt{Yes}/\texttt{No} or gender strings. \\
+\addlinespace
+Subscribed Services & \texttt{tenure}, \texttt{PhoneService}, \texttt{MultipleLines}, \texttt{InternetService}, \texttt{OnlineSecurity}, \texttt{OnlineBackup}, \texttt{DeviceProtection}, \texttt{TechSupport}, \texttt{StreamingTV}, \texttt{StreamingMovies} & \texttt{tenure} measures active months ($0\text{--}72$). Add-on services take the value \texttt{``No internet service''} when \texttt{InternetService} equals \texttt{``No''}. \\
+\addlinespace
+Contracts \& Financials & \texttt{Contract}, \texttt{PaperlessBilling}, \texttt{PaymentMethod}, \texttt{MonthlyCharges}, \texttt{TotalCharges} & \texttt{TotalCharges} approximates $\texttt{tenure} \times \texttt{MonthlyCharges}$ (stored initially as \texttt{object}). \\
+\addlinespace
+Target Variable & \texttt{Churn} & Binary response (\texttt{``Yes''} if the subscriber left within the past month, \texttt{``No''} otherwise). \\
+\bottomrule
+\end{tabularx}
+\caption{Functional grouping of the 21 attributes in the IBM Telco Customer Churn dataset.}
+\label{tab:feature_groups}
+\end{table}
+
+\subsection{Detailed Variable-by-Variable Architecture}
+
+\subsubsection{A. Account Identifier}
+\begin{itemize}
+    \item \textbf{customerID (Object / String):} A unique alphanumeric string assigned to each subscriber (for example, \texttt{'7590-VHVEG'}, \texttt{'5575-GNVDE'}, \texttt{'3668-QPYBK'}). This variable serves purely as a primary database key for administrative tracking and record indexing.
+\end{itemize}
+
+\subsubsection{B. Demographic Attributes}
+\begin{itemize}
+    \item \textbf{gender (Object / Binary Categorical):} Indicates whether the primary account holder identifies as \texttt{'Male'} or \texttt{'Female'}. In telecommunications churn modeling, gender is typically evaluated to ensure demographic parity and to verify whether service adoption exhibits gender-based variance.
+    \item \textbf{SeniorCitizen (int64 / Binary Indicator):} A numerically encoded boolean flag indicating whether the subscriber is aged $65$ or older ($1 = \text{Yes}$, $0 = \text{No}$). Unlike other binary columns in the data that use \texttt{'Yes'}/\texttt{'No'} strings, \texttt{SeniorCitizen} is natively stored as a $64$-bit integer. Senior citizens represent a distinct demographic cohort with specific usage patterns, fixed-income sensitivity, and differing technological support needs.
+    \item \textbf{Partner (Object / Binary Categorical):} Denotes whether the customer has a spouse or domestic partner (\texttt{'Yes'} or \texttt{'No'}). Subscribers with partners often share household expenses and multi-user service plans, which tends to increase switching friction and stabilize account retention.
+    \item \textbf{Dependents (Object / Binary Categorical):} Indicates whether the customer lives with financial dependents such as children, elderly parents, or other family members (\texttt{'Yes'} or \texttt{'No'}). Households with dependents typically rely heavily on uninterrupted home connectivity for education, entertainment, and communication, making them less likely to impulsively cancel services.
+\end{itemize}
+
+\subsubsection{C. Subscribed Service Ecosystem}
+\begin{itemize}
+    \item \textbf{tenure (int64 / Discrete Numerical):} Represents the total number of months the customer has maintained an active subscription with the telecommunications provider. Values range from $0$ months (brand-new sign-ups who have not yet completed their first billing cycle) to a maximum of $72$ months (six years). Tenure is a foundational proxy for brand loyalty and customer lifecycle stage.
+    \item \textbf{PhoneService (Object / Binary Categorical):} Specifies whether the subscriber is enrolled in landline voice telephone service (\texttt{'Yes'} or \texttt{'No'}).
+    \item \textbf{MultipleLines (Object / Ternary Categorical):} Indicates whether the customer subscribes to multiple telephone lines concurrently. Possible values are \texttt{'Yes'}, \texttt{'No'}, or \texttt{'No phone service'}.
+    \item \textbf{InternetService (Object / Ternary Categorical):} Identifies the underlying broadband infrastructure tier subscribed to by the household: \texttt{'DSL'} (Digital Subscriber Line over copper telephone wires), \texttt{'Fiber optic'} (high-speed optical glass fiber connectivity), or \texttt{'No'} (no internet subscription). This variable is crucial because DSL and Fiber optic represent vastly different price points, bandwidth capabilities, and competitive dynamics.
+    \item \textbf{OnlineSecurity (Object / Ternary Categorical):} Indicates whether the subscriber has opted into the provider's cybersecurity and malware protection add-on (\texttt{'Yes'}, \texttt{'No'}, or \texttt{'No internet service'}).
+    \item \textbf{OnlineBackup (Object / Ternary Categorical):} Denotes enrollment in automated cloud storage and data backup services (\texttt{'Yes'}, \texttt{'No'}, or \texttt{'No internet service'}).
+    \item \textbf{DeviceProtection (Object / Ternary Categorical):} Indicates whether the customer pays for hardware insurance and technical replacement coverage for modems, routers, or connected devices (\texttt{'Yes'}, \texttt{'No'}, or \texttt{'No internet service'}).
+    \item \textbf{TechSupport (Object / Ternary Categorical):} Specifies whether the customer has subscribed to priority technical troubleshooting and dedicated IT assistance (\texttt{'Yes'}, \texttt{'No'}, or \texttt{'No internet service'}). In empirical churn studies, the absence of \texttt{TechSupport}---especially among Fiber optic users experiencing hardware or configuration issues---is a primary catalyst for customer frustration and defection.
+    \item \textbf{StreamingTV (Object / Ternary Categorical):} Indicates whether the customer uses their internet connection to stream television programming via the provider's platform or bundled partnerships (\texttt{'Yes'}, \texttt{'No'}, or \texttt{'No internet service'}).
+    \item \textbf{StreamingMovies (Object / Ternary Categorical):} Indicates whether the customer utilizes the service for on-demand movie streaming (\texttt{'Yes'}, \texttt{'No'}, or \texttt{'No internet service'}).
+\end{itemize}
+
+\subsubsection{D. Contractual and Financial Mechanics}
+\begin{itemize}
+    \item \textbf{Contract (Object / Ordinal Categorical):} Defines the legal commitment duration of the subscriber's service agreement: \texttt{'Month-to-month'}, \texttt{'One year'}, or \texttt{'Two year'}. Contractual length directly governs early termination fees, price lock guarantees, and the frequency with which a customer is exposed to renewal decisions.
+    \item \textbf{PaperlessBilling (Object / Binary Categorical):} Indicates whether the subscriber receives electronic invoices via email or web portal (\texttt{'Yes'}) rather than physical paper statements sent via postal mail (\texttt{'No'}).
+    \item \textbf{PaymentMethod (Object / Nominal Categorical):} Captures the specific financial mechanism used to settle monthly invoices: \texttt{'Electronic check'}, \texttt{'Mailed check'}, \texttt{'Bank transfer (automatic)'}, or \texttt{'Credit card (automatic)'}. A critical business distinction exists here between manual payment methods (Electronic check and Mailed check, which require active monthly customer intervention) and automated recurring billing methods (Bank transfer and Credit card).
+    \item \textbf{MonthlyCharges (float64 / Continuous Numerical):} The recurring financial amount billed to the customer each month, expressed in US Dollars (USD). This metric reflects the cumulative pricing of the customer's base connectivity tier plus all active value-added add-ons.
+    \item \textbf{TotalCharges (Object $\rightarrow$ float64 / Continuous Numerical):} The cumulative monetary amount billed to the subscriber over the entirety of their tenure with the company. Mathematically, \texttt{TotalCharges} approximates the product of \texttt{tenure} and \texttt{MonthlyCharges} (adjusted for historical rate changes or promotional discounts).
+\end{itemize}
+
+\subsubsection{E. Target Variable}
+\begin{itemize}
+    \item \textbf{Churn (Object / Binary Categorical):} The response variable indicating whether the subscriber terminated their service within the past billing month (\texttt{'Yes'} or \texttt{'No'}). This serves as our supervised learning target for binary classification modeling.
+\end{itemize}
+
+\subsection{Structural Dependencies Among Service Attributes}
+Two critical hierarchical dependencies exist within the service ecosystem attributes that must be accounted for during analysis:
+\begin{enumerate}
+    \item \textbf{Landline Dependency:} The category \texttt{'No phone service'} in \texttt{MultipleLines} only appears when \texttt{PhoneService} is equal to \texttt{'No'}.
+    \item \textbf{Broadband Add-On Dependency:} All six value-added internet features (\texttt{OnlineSecurity}, \texttt{OnlineBackup}, \texttt{DeviceProtection}, \texttt{TechSupport}, \texttt{StreamingTV}, and \texttt{StreamingMovies}) share an exact structural dependency on \texttt{InternetService}. Whenever \texttt{InternetService} equals \texttt{'No'}, all six add-on columns are automatically assigned the value \texttt{'No internet service'}. Consequently, these columns carry built-in structural correlation across the dataset.
+\end{enumerate}
+
+\subsection{Baseline Descriptive Statistics of Numeric Features}
+In our initial exploratory phase, calling \texttt{df.describe()} on the raw dataset calculates summary statistics for the three columns natively recognized by \texttt{pandas} as numeric (\texttt{SeniorCitizen}, \texttt{tenure}, and \texttt{MonthlyCharges} across all $7,043$ original records). Note that \texttt{TotalCharges} does not appear in Table~\ref{tab:baseline_stats} because it is still stored as a text column (\texttt{object}) prior to data cleaning.
+
+To interpret Table~\ref{tab:baseline_stats} clearly, recall that if we line up all $7,043$ customers from lowest value to highest value: \textbf{25\% (Q1)} is the value one-quarter of the way through the list, \textbf{50\% (Median)} is the exact middle customer, and \textbf{75\% (Q3)} is three-quarters of the way through the list.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lrrrrrrr}
+\toprule
+\textbf{Attribute} & \textbf{Mean} & \textbf{Std Dev} & \textbf{Min} & \textbf{25\% (Q1)} & \textbf{50\% (Median)} & \textbf{75\% (Q3)} & \textbf{Max} \\
+\midrule
+\texttt{SeniorCitizen}        & 0.1621  & 0.3686  & 0.00   & 0.00   & 0.00   & 0.00   & 1.00 \\
+\texttt{tenure} (months)      & 32.3711 & 24.5595 & 0.00   & 9.00   & 29.00  & 55.00  & 72.00 \\
+\texttt{MonthlyCharges} (USD) & 64.7617 & 30.0900 & 18.25  & 35.50  & 70.35  & 89.85  & 118.75 \\
+\bottomrule
+\end{tabular}
+\caption{Baseline descriptive statistics for the three natively numeric attributes across all $N = 7,043$ raw records.}
+\label{tab:baseline_stats}
+\end{table}
+
+\begin{itemize}
+    \item \textbf{SeniorCitizen (Proportion of Older Subscribers):} Because this column only contains $0$ (No) or $1$ (Yes), its average (Mean $= 0.1621$) directly tells us the percentage of ones in the data. Specifically, \textbf{16.21\% of the customer base} (approximately $1,142$ subscribers) are senior citizens aged $65$ or older, while the remaining $83.79\%$ are younger than $65$. Because over $83\%$ of customers have a value of $0$, the Q1, Median, and Q3 values are all $0.00$.
+    \item \textbf{Customer Tenure (Two Distinct Customer Crowds):} Customers stay with the company for an average of $32.37$ months, with a wide standard deviation of $24.56$ months across the $0\text{--}72$ month range. Looking at the quartiles, the bottom $25\%$ of customers have been with the company for $9$ months or less ($\text{Q1} = 9.0$), the middle customer has stayed for $29$ months ($\text{Median} = 29.0$), and the top $25\%$ have stayed between $55$ and $72$ months ($\text{Q3} = 55.0$). This wide spread reflects a \textbf{U-shaped (bimodal) distribution}: the company has two main crowds---a large wave of brand-new sign-ups and a large core of long-term, multi-year loyalists. Crucially, notice that \textbf{$\text{Min} = 0.00$ months}, which proves that the dataset contains brand-new subscribers who have not yet completed their first month of service.
+    \item \textbf{MonthlyCharges (High-Bill Bundles vs.\ Basic Phone Plans):} Monthly bills range from a minimum of $\$18.25$ (basic single-line phone service without internet) to a maximum of $\$118.75$ (Fiber optic internet bundled with multiple lines, security, backup, support, and streaming). Notice that the \textbf{middle customer's bill ($\text{Median} = \$70.35$) is noticeably higher than the overall average ($\text{Mean} = \$64.76$)}. In statistics, this is called a \textbf{left-skewed distribution}: most customers pay high monthly rates ($\$70\text{--}\$118$) for internet and streaming bundles, while a smaller group of basic phone-only users pays around $\$20$ per month, pulling the overall average down.
+\end{itemize}
+
+\subsection{Summary of Chapter 2}
+Chapter 2 has provided a complete taxonomy of the $21$ attributes across five functional groups, documented the structural dependencies among phone and internet add-on services, and explained the baseline statistical distributions of the numeric features. Importantly, our statistical inspection uncovered two critical clues: first, \texttt{TotalCharges} was excluded from the numeric summary table because it is stored as text (\texttt{object}); second, the minimum value of \texttt{tenure} is $0.00$ months. In Chapter 3, we show how these two clues are directly connected and execute a rigorous data cleaning pipeline to resolve them.

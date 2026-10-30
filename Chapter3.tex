@@ -1,0 +1,93 @@
+%======================================================================
+% CHAPTER 3
+%======================================================================
+\section{Data Cleaning and Sanitization Methodology}
+\label{sec:cleaning}
+
+\subsection{Defensive Copying Strategy}
+Raw enterprise data exported from relational billing systems rarely conforms to the strict mathematical assumptions required by statistical visualization libraries and machine learning algorithms. In our study, we executed a structured, multi-stage data sanitization pipeline on a defensive copy of the original DataFrame:
+\begin{center}
+\texttt{df\_cleaned = df.copy()}
+\end{center}
+Performing the entire cleaning process on a defensive copy is a critical software engineering best practice: it preserves the raw ingested data (\texttt{df}) intact in memory for auditing and before-and-after state comparison, ensuring idempotency and preventing destructive overwrites.
+
+\subsection{Initial Missing Value Inspection and the ``Illusion of Completeness''}
+In the first stage of our sanitization audit, we executed a standard preliminary null check using \texttt{df.isnull().sum()} alongside a visual missingness matrix generated via the \texttt{missingno} library (\texttt{msno.matrix(df)}, represented in Figure~\ref{fig:missing_before}). Surprisingly, \texttt{df.isnull().sum()} reported $0$ missing values across all $21$ columns, and our initial \texttt{missingno} matrix rendered as a solid, unbroken dark block across all $7,043$ rows.
+
+\begin{figure}[H] % Dùng [H] để ép hình nằm đúng vị trí tuyệt đối
+\centering
+\includegraphics[width=0.85\textwidth]{fig_missing_before.pdf} % Thay bằng tên file ảnh chuẩn của bạn
+\caption{Matrix of missing values in the original raw data.}
+\label{fig:missing_before}
+\end{figure}
+
+However, relying solely on a naive \texttt{.isnull()} check in \texttt{pandas} is a classic data science pitfall. Standard \texttt{pandas} CSV parsers (\texttt{pd.read\_csv()}) only flag cells as \texttt{NaN} (Not a Number) if they are completely empty (consecutive commas \texttt{,,}) or match standard null sentinel strings (such as \texttt{'NA'}, \texttt{'NULL'}, or \texttt{'NaN'}). Because the source legacy billing database exported missing numeric fields as single whitespace characters (\texttt{' '}), \texttt{pandas} interpreted the whitespace as a valid non-empty string literal. Consequently, the presence of even a single whitespace string forced \texttt{pandas} to upcast the entire \texttt{TotalCharges} column's data type from \texttt{float64} to generic \texttt{object} (string), completely masking the missing values from standard null-detection functions.
+
+\subsection{Removal of High-Cardinality Identifier Attributes (\texttt{customerID})}
+The first explicit structural transformation we executed in our cleaning pipeline was the removal of the \texttt{customerID} column:
+\begin{itemize}
+    \item \textbf{Programmatic Execution:} \texttt{df\_cleaned.drop('customerID', axis=1, inplace=True)}
+    \item \textbf{Concrete Reasoning and Mathematical Justification:} In our dataset of $N = 7,043$ rows, \texttt{customerID} has a cardinality of $7,043$ distinct values---meaning every single record possesses a unique identifier with zero repetition. From an information-theoretic perspective, an attribute that is unique for every observation provides zero generalizing power to unseen customers. Retaining \texttt{customerID} during machine learning preprocessing would introduce two severe structural flaws:
+    \begin{enumerate}
+        \item \textit{Curse of Dimensionality under One-Hot Encoding:} Applying one-hot encoding would explode the feature space by adding $7,043$ sparse binary columns, exhausting system memory and rendering matrix inversions singular or computationally intractable.
+        \item \textit{Overfitting under Label or Target Encoding:} If encoded numerically, tree-based models (such as Random Forests or Gradient Boosted Trees) would exploit arbitrary alphanumeric sort orders to ``memorize'' individual training instances, leading to severe overfitting and a failure to generalize to test sets.
+    \end{enumerate}
+    Therefore, removing \texttt{customerID} immediately reduces dimensionality without any loss of behavioral or predictive signal.
+\end{itemize}
+
+\subsection{Type Coercion and Unmasking Hidden Missing Values in \texttt{TotalCharges}}
+As noted in Chapters 1 and 2, \texttt{TotalCharges} was ingested as an \texttt{object} string column despite containing decimal currency amounts such as \texttt{'29.85'}, \texttt{'1889.5'}, and \texttt{'108.15'}. Attempting a direct type cast via \texttt{df\_cleaned['TotalCharges'].astype(float)} immediately fails with a fatal \texttt{ValueError: could not convert string to float: ' '} upon encountering the whitespace strings. To rectify this data type mismatch and expose the hidden nulls, we executed forced numeric coercion:
+\begin{center}
+\texttt{df\_cleaned['TotalCharges'] = pd.to\_numeric(df\_cleaned['TotalCharges'], errors='coerce')}
+\end{center}
+
+\begin{itemize}
+    \item \textbf{Technical Mechanics:} By specifying the parameter \texttt{errors='coerce'}, we instructed the \texttt{pandas} parser to convert every valid numeric string token into a $64$-bit IEEE 754 floating-point number (\texttt{float64}), while gracefully catching any unparseable non-numeric strings---specifically the whitespace characters (\texttt{' '})---and replacing them with formal \texttt{numpy.nan} (\texttt{NaN}) markers.
+    \item \textbf{Visual Verification of Exposed Nulls:} Following type coercion, auditing \texttt{df\_cleaned['TotalCharges'].isnull().sum()} and plotting a second \texttt{missingno} matrix highlighted in red (\texttt{color=(0.8, 0.2, 0.2)}, represented in Figure~\ref{fig:missing_after}) revealed exactly \textbf{11 missing values} in \texttt{TotalCharges}, visible as distinct horizontal white gaps cutting across the matrix.
+\end{itemize}
+
+\begin{figure}[H] % Dùng [H] để ép hình nằm đúng vị trí tuyệt đối
+\centering
+\includegraphics[width=0.85\textwidth]{fig_missing_after.pdf} % Thay tên file ảnh thật của bạn vào đây
+\caption{Matrix of missing values after type casting on \texttt{TotalCharges}.}
+\label{fig:missing_after}
+\end{figure}
+
+\subsection{Handling the 11 Missing Records: Listwise Deletion vs.\ Imputation}
+Cross-referencing the $11$ records missing a \texttt{TotalCharges} value against our descriptive statistics table from Chapter 2 (where minimum \texttt{tenure} was observed to be $0.00$) reveals the exact domain root cause: all $11$ rows correspond to brand-new subscribers whose \texttt{tenure} equals $0$ months. Because these customers have just signed their service contracts and have not yet completed their first monthly billing cycle, no cumulative invoice has been generated in the accounting ledger, resulting in a blank field for \texttt{TotalCharges}.
+
+Rather than imputing values (such as filling with $0$, the mean, or the median), we executed listwise deletion via \texttt{df\_cleaned.dropna(inplace=True)}. This decision is rigorously justified by four converging statistical and methodological factors:
+\begin{enumerate}
+    \item \textbf{Negligible Sample Attrition:} Removing $11$ records out of $7,043$ represents a minuscule data loss rate of only $0.156\%$, retaining $99.844\%$ of the dataset ($7,032$ complete records). In statistical sampling theory, attrition well below the $1\%$ threshold has virtually zero impact on statistical power or variance estimation.
+    \item \textbf{Avoidance of Distributional Distortion and Contradictory Records:} Blindly applying mean imputation ($\approx \$2,283.30$ USD) or median imputation ($\approx \$1,397.47$ USD) to these $11$ rows would synthesize physically impossible, contradictory records---assigning over a thousand dollars of cumulative charges to brand-new customers with $0$ months of usage. Doing so would severely distort the strong structural collinearity between \texttt{tenure}, \texttt{MonthlyCharges}, and \texttt{TotalCharges}.
+    \item \textbf{Preservation of Target Variable and Class Integrity:} Customers with $\texttt{tenure} = 0$ have had zero time to experience service quality, billing cycles, or technical support, and all $11$ records carry the label $\texttt{Churn} = \texttt{'No'}$. Removing these $11$ unbilled onboarding accounts does not skew the class distribution and ensures that downstream exploratory analysis and predictive models are trained strictly on active accounts that have completed at least one billing cycle ($\texttt{tenure} \ge 1$).
+    \item \textbf{Zero Data Leakage Prior to Train/Test Splitting:} Because listwise deletion (\texttt{dropna()}) operates strictly on a record-by-record basis and does not estimate any population statistics (such as sample means or medians) across rows, it can be safely executed prior to splitting the dataset into training and testing sets without inducing data leakage.
+\end{enumerate}
+
+\subsection{Before-and-After Pipeline Transformation Audit}
+At the conclusion of our data sanitization pipeline, we conducted a comprehensive verification audit comparing the exact structural state of the raw DataFrame (\texttt{df}) against the cleaned DataFrame (\texttt{df\_cleaned}), as detailed in Table~\ref{tab:cleaning_audit}:
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabularx}{\textwidth}{l X X}
+\toprule
+\textbf{Audit Criterion} & \textbf{Before Cleaning (\texttt{df})} & \textbf{After Cleaning (\texttt{df\_cleaned})} \\
+\midrule
+Dataset Dimensions & $7,043\text{ rows} \times 21\text{ columns}$ & $7,032\text{ rows} \times 20\text{ columns}$ \\
+\addlinespace
+Record Count (Rows) & $7,043$ total records & $7,032$ active records (removed $11$ unbilled rows with $\texttt{tenure} = 0$) \\
+\addlinespace
+Attribute Count (Columns) & $21$ attributes & $20$ attributes (removed high-cardinality key \texttt{customerID}) \\
+\addlinespace
+Data Type Distribution (\texttt{dtypes}) & \texttt{float64}(1), \texttt{int64}(2), \texttt{object}(18) & \texttt{float64}(2), \texttt{int64}(2), \texttt{object}(16) \\
+\addlinespace
+Data Type of \texttt{TotalCharges} & \texttt{object} (string containing $11$ whitespace \texttt{' '} entries) & \texttt{float64} (continuous numerical currency variable) \\
+\addlinespace
+Total Null Count (\texttt{NaN}) & $0$ detected natively ($11$ hidden as whitespace) & $0$ (completely sanitized and verified via \texttt{.isnull().sum()}) \\
+\bottomrule
+\end{tabularx}
+\caption{Comprehensive comparison of dataset structure and data types before and after the sanitization pipeline.}
+\label{tab:cleaning_audit}
+\end{table}
+
